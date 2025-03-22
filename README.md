@@ -1,6 +1,6 @@
 # Getting Started
 
-This project uses the LiteLLM MCP implementation with a few other MCP servers and clients. In particular the go-based mcp server and client from [mark3labs](https://github.com/mark3labs/mcp-go/tree/main/examples/everything)
+This project tests the initial [LiteLLM MCP](https://github.com/BerriAI/litellm/pull/9436) implementation with a few other MCP servers and clients. In particular the go-based mcp server and client from [mark3labs](https://github.com/mark3labs/mcp-go/tree/main/examples/everything)
 
 ## Requirements
 
@@ -37,5 +37,5 @@ go run main.go -t sse -p 8080 # transport over http network with port 8080
 ```sh
 cd client
 go mod download
-go run main.go -mcpUri 'http://localhost:2020/sse' # connect to mcp server on uri
+go run main.go -mcpUri 'http://localhost:8080/sse' # connect to mcp server on uri
 ```
