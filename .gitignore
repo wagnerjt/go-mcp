@@ -23,3 +23,9 @@ go.work.sum
 
 # env file
 .env
+
+# python things
+.venv
+__pycache__
+*.pyc
+.ruff_cache
