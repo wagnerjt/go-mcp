@@ -7,5 +7,4 @@ general_settings:
   proxy_batch_write_at: 60
   database_connection_pool_limit: 20
   database_connection_timeout: 60
-  store_model_in_db: True
   forward_client_headers_to_llm_api: True
