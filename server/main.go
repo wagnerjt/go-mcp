@@ -139,7 +139,6 @@ func handleNotification(
 
 func main() {
 	flag.StringVar(&transport, "t", "sse", "Transport type (stdio or sse)")
-	flag.StringVar(&transport, "transport", "stdio", "Transport type (stdio or sse)")
 	flag.StringVar(&port, "p", "8080", "Port to listen on")
 	flag.Parse()
 
