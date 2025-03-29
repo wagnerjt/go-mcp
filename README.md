@@ -58,9 +58,31 @@ python litellm_client.py
 ### Testing python sdk on LiteLLM Proxy MCP
 
 ```sh
-# run go mcp server first on sse transport
+# run go litellm proxy
+docker compose up
 
 # run client
 cd bridge
 python mcp_client.py
+# Initializing session...
+# Session initialized
+# Loading tools...
+# Loaded 1 tools
+# meta=None content=[TextContent(type='text', text='13:04', annotations=None)] isError=Fals
+```
+
+### Testing Go client on LiteLLM proxy MCP
+
+```sh
+# run go litellm proxy
+docker compose up
+
+cd bridge
+go run main.go -mcpUri http://localhost:4000/mcp
+# 2025/03/29 06:02:11 Connected to server with name litellm-mcp-server
+# 2025/03/29 06:02:11 Ping successful
+# 2025/03/29 06:02:11 Found 1 tools
+# 2025/03/29 06:02:11 Tool: get_current_time
+# 2025/03/29 06:02:11 Calling get_current_time tool
+# 2025/03/29 06:02:11 Result: 13:02
 ```
