@@ -14,7 +14,7 @@ You need to have the following installed
 ```sh
 uv venv --python 3.13
 source .venv/bin/activate # windows -- source .venv/Scripts/active
-uv pip install -r bridge/requirements.txt
+uv pip install -r requirements.txt
 
 # cd into each and install dependencies
 cd client;go mod download; cd ..
@@ -26,7 +26,6 @@ cd server; go mod download; cd ..
 Or via docker
 
 ```sh
-cd bridge
 docker compose up
 ```
 
@@ -54,4 +53,14 @@ go run main.go -mcpUri 'http://localhost:8080/sse' # connect to mcp server on ur
 # run client
 cd bridge
 python litellm_client.py
+```
+
+### Testing python sdk on LiteLLM Proxy MCP
+
+```sh
+# run go mcp server first on sse transport
+
+# run client
+cd bridge
+python mcp_client.py
 ```
