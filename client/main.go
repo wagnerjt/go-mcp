@@ -69,7 +69,8 @@ func main() {
 		log.Printf("Tool: %s", tool.Name)
 	}
 
-	callToolGoServer(ctx, c)
+	// callToolGoServer(ctx, c)
+	callToolLiteLLMServer(ctx, c)
 }
 
 func callToolGoServer(ctx context.Context, c *client.SSEMCPClient) {
@@ -80,6 +81,26 @@ func callToolGoServer(ctx context.Context, c *client.SSEMCPClient) {
 	request.Params.Arguments = map[string]interface{}{
 		"a": 1.50,
 		"b": 5,
+	}
+
+	result, err := c.CallTool(ctx, request)
+	if err != nil || result.IsError {
+		log.Fatalf("CallTool failed: %v", err)
+	}
+
+	if len(result.Content) != 1 {
+		log.Fatalf("Expected 1 content item, got %d", len(result.Content))
+	}
+	log.Printf("Result: %s", result.Content[0].(mcp.TextContent).Text)
+}
+
+func callToolLiteLLMServer(ctx context.Context, c *client.SSEMCPClient) {
+	log.Printf("Calling get_current_time tool")
+
+	request := mcp.CallToolRequest{}
+	request.Params.Name = "get_current_time"
+	request.Params.Arguments = map[string]interface{}{
+		"format": "short",
 	}
 
 	result, err := c.CallTool(ctx, request)

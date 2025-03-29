@@ -8,3 +8,23 @@ general_settings:
   database_connection_pool_limit: 20
   database_connection_timeout: 60
   forward_client_headers_to_llm_api: True
+
+# mcp tools for settings
+mcp_tools:
+  - name: "get_current_time"
+    description: "Get the current time in a specified format"
+    input_schema:
+      {
+        "type": "object",
+        "properties":
+          {
+            "format":
+              {
+                "type": "string",
+                "description": "The format of the time to return",
+                "enum": ["short", "long", "iso"],
+              },
+          },
+        "required": ["format"],
+      }
+    handler: "mcp_tools.get_current_time"
