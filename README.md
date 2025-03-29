@@ -86,3 +86,13 @@ go run main.go -mcpUri http://localhost:4000/mcp
 # 2025/03/29 06:02:11 Calling get_current_time tool
 # 2025/03/29 06:02:11 Result: 13:02
 ```
+
+## Buf usage
+
+```sh
+# install buf
+go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+buf lint
+buf generate
+
+```

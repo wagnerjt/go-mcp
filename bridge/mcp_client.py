@@ -24,7 +24,11 @@ async def main():
             print(f"Loaded {len(tools)} tools")
 
             # Call the tool
-            print(await session.call_tool("get_current_time", {"format": "short"}))
+            print(
+                await session.call_tool(
+                    "get_current_time", {"format": "xyz", "foo": "bar"}
+                )
+            )
 
             # Create a ReAct agent with the model and tools
             # agent = create_react_agent(model, tools)

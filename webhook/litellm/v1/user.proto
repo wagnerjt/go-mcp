@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package webhook.litellm.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// option go_package = "github.com/wagnerjt/go-mcp/webhook/litellm/v1";
+
+message User {
+    string id = 1;
+    string name = 2;
+    google.protobuf.Timestamp time = 3;
+}
