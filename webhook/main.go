@@ -5,6 +5,9 @@ import (
 	"io"
 	"log"
 	"net/http"
+
+	litellmv1 "github.com/wagnerjt/go-mcp/webhook/litellm/v1"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func webhookHandler(w http.ResponseWriter, r *http.Request) {
@@ -25,13 +28,16 @@ func webhookHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Webhook received successfully"))
 
-	u := &User{
+	// proto.Marshal()
+
+	u := &litellmv1.User{
 		Id:   "12345",
 		Name: "John Doe",
-		Time: &Timestamp{
+		Time: &timestamppb.Timestamp{
 			Seconds: 1622547800,
 		},
 	}
+	log.Printf("User ID: %s", u.GetId())
 }
 
 func main() {

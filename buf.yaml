@@ -1,8 +1,13 @@
 # https://github.com/bufbuild/buf-examples/blob/main/linting/good/buf.yaml
 version: v2
-name: github.com/wagnerjt/go-mcp
+
 deps:
   - buf.build/googleapis/googleapis
+
+modules:
+  - path: proto
+    name: github.com/wagnerjt/go-mcp
+
 lint:
   use:
     - STANDARD
@@ -10,6 +15,7 @@ lint:
     - FIELD_NOT_REQUIRED
     - PACKAGE_NO_IMPORT_CYCLE
   disallow_comment_ignores: true
+
 breaking:
   use:
     - FILE
