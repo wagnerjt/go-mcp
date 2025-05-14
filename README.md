@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/wagnerjt-go-mcp-badge.png)](https://mseep.ai/app/wagnerjt-go-mcp)
+
 # Getting Started
 
 This project tests the initial [LiteLLM MCP](https://github.com/BerriAI/litellm/pull/9436) implementation with a few other MCP servers and clients. In particular the go-based mcp server and client from [mark3labs](https://github.com/mark3labs/mcp-go/tree/main/examples/everything)
