@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -37,6 +38,10 @@ func NewMCPServer() *server.MCPServer {
 			mcp.Required(),
 		),
 	), handleEchoTool)
+
+	mcpServer.AddTool(mcp.NewTool("get_current_time",
+		mcp.WithDescription("Get the current time"),
+	), handleCurrentTime)
 
 	mcpServer.AddTool(
 		mcp.NewTool("notify"),
@@ -74,6 +79,20 @@ func handleEchoTool(
 			mcp.TextContent{
 				Type: "text",
 				Text: fmt.Sprintf("Echo: %s", message),
+			},
+		},
+	}, nil
+}
+
+func handleCurrentTime(
+	ctx context.Context,
+	request mcp.CallToolRequest,
+) (*mcp.CallToolResult, error) {
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{
+			mcp.TextContent{
+				Type: "text",
+				Text: fmt.Sprintf("Time: %s", time.Now().Format(time.RFC3339)),
 			},
 		},
 	}, nil

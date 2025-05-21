@@ -83,6 +83,8 @@ go run main.go -mcpUri http://localhost:4000/mcp
 # 2025/03/29 06:02:11 Ping successful
 # 2025/03/29 06:02:11 Found 1 tools
 # 2025/03/29 06:02:11 Tool: get_current_time
+
 # 2025/03/29 06:02:11 Calling get_current_time tool
+
 # 2025/03/29 06:02:11 Result: 13:02
 ```
