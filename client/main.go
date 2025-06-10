@@ -10,12 +10,15 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
+const sse string = "sse"
+const http string = "http"
+
 var mcpUri string
 var mcpTransport string
 
 // pulled from https://github.com/mark3labs/mcp-go/blob/main/client/sse_test.go
 func main() {
-	flag.StringVar(&mcpTransport, "t", "sse", "Transport to use for MCP client (sse, http)")
+	flag.StringVar(&mcpTransport, "t", sse, "Transport to use for MCP client (sse, http)")
 	flag.StringVar(&mcpUri, "mcpUri", "http://localhost:8080/sse", "Fully qualified mcpUri to connect to including port i.e. http://localhost:8080/sse")
 	flag.Parse()
 
@@ -25,14 +28,17 @@ func main() {
 	var c *client.Client
 	var err error
 
-	if mcpTransport == "sse" {
+	if mcpTransport == sse {
 		log.Printf("Using SSE transport")
 		// Create MCP client using SSE transport
 		c, err = client.NewSSEMCPClient(mcpUri)
-	} else {
+	} else if mcpTransport == http {
 		log.Printf("Using HTTP transport")
 		// Create MCP client using HTTP transport
 		c, err = client.NewStreamableHttpClient(mcpUri)
+	} else {
+		log.Fatalf("Unsupported transport type: %s", mcpTransport)
+		panic("Unsupported transport type")
 	}
 
 	if err != nil {

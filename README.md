@@ -42,7 +42,8 @@ go run main.go -t sse -p 8080 # transport over http network with port 8080
 ```sh
 # run go mcp server first on sse transport
 cd client
-go run main.go -mcpUri 'http://localhost:8080/sse' # connect to mcp server on uri
+go run main.go -t sse -mcpUri 'http://localhost:8080/sse' # connect to mcp server on uri
+go run main.go -t http -mcpUri 'http://localhost:3000/mcp' # connect to http mcp server on uri
 ```
 
 ### Testing Litellm sdk MCP client
