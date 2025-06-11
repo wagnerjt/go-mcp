@@ -69,7 +69,7 @@ func handleEchoTool(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
-	arguments := request.Params.Arguments
+	arguments := request.GetArguments()
 	message, ok := arguments["message"].(string)
 	if !ok {
 		return nil, fmt.Errorf("invalid message argument")
@@ -102,7 +102,7 @@ func handleAddTool(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
-	arguments := request.Params.Arguments
+	arguments := request.GetArguments()
 	a, ok1 := arguments["a"].(float64)
 	b, ok2 := arguments["b"].(float64)
 	if !ok1 || !ok2 {
@@ -157,7 +157,7 @@ func handleNotification(
 }
 
 func main() {
-	flag.StringVar(&transport, "t", "sse", "Transport type (stdio or sse)")
+	flag.StringVar(&transport, "t", "sse", "Transport type (stdio, sse, or http)")
 	flag.StringVar(&port, "p", "8080", "Port to listen on")
 	flag.Parse()
 
@@ -165,14 +165,23 @@ func main() {
 
 	// Only check for "sse" since stdio is the default
 	if transport == "sse" {
-		sseServer := server.NewSSEServer(mcpServer, server.WithBaseURL("http://localhost:"+port))
+		sseServer := server.NewSSEServer(mcpServer)
 		log.Printf("SSE server listening on port %s", port)
 		if err := sseServer.Start(":" + port); err != nil {
 			log.Fatalf("Server error: %v", err)
 		}
-	} else {
+	} else if transport == "http" {
+		httpServer := server.NewStreamableHTTPServer(mcpServer)
+		log.Printf("HTTP server listening on port %s", port)
+		if err := httpServer.Start(":" + port); err != nil {
+			log.Fatalf("Server error: %v", err)
+		}
+	} else if transport == "stdio" {
 		if err := server.ServeStdio(mcpServer); err != nil {
 			log.Fatalf("Server error: %v", err)
 		}
+	} else {
+		log.Fatalf("Unsupported transport type: %s", transport)
+		panic("Unsupported transport type")
 	}
 }
