@@ -4,9 +4,6 @@ from datetime import timedelta
 from mcp import ClientSession
 from mcp.client.sse import sse_client
 from mcp.client.streamable_http import streamablehttp_client
-import os
-
-base_url: str = os.getenv("LITELLM_BASE_URL", "http://localhost:3000/mcp")
 
 
 class MCPClient:

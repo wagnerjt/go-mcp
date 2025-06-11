@@ -45,12 +45,17 @@ func main() {
 		log.Fatalf("Error creating client: %v\n", err)
 
 	}
-	// defer c.Close()
 
 	// Start the client
 	if err := c.Start(ctx); err != nil {
 		log.Fatalf("Error starting client: %v", err)
 	}
+	defer c.Close()
+
+	// Set up notification handler
+	c.OnNotification(func(notification mcp.JSONRPCNotification) {
+		log.Printf("Received notification: %s\n", notification.Method)
+	})
 
 	// init request
 	initRequest := mcp.InitializeRequest{}
@@ -59,7 +64,9 @@ func main() {
 		Name:    "go-client",
 		Version: "0.0.1",
 	}
+	initRequest.Params.Capabilities = mcp.ClientCapabilities{}
 
+	log.Println("Initializing client...")
 	result, err := c.Initialize(ctx, initRequest)
 	if err != nil {
 		log.Fatalf("Failed to initialize: %v", err)
