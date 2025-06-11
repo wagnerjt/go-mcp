@@ -5,4 +5,5 @@ fastapi
 uvicorn
 slowapi
 uuid
+click
 python-dotenv>=0.2.0 # for env

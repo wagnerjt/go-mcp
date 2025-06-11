@@ -185,22 +185,38 @@ async def handle_mcp(scope: Scope, receive: Receive, send: Send) -> None:
     await session_manager.handle_request(scope, receive, send)
 
 
+async def handle_sse(scope: Scope, receive: Receive, send: Send) -> None:
+    """Handle MCP requests through SSE."""
+    await sse_session_manager.handle_request(scope, receive, send)
+
+
 @contextlib.asynccontextmanager
 async def lifespan(app: Starlette) -> AsyncIterator[None]:
     """Application lifespan context manager."""
     async with session_manager.run():
-        logger.info("MCP Server started with StreamableHTTP session manager!")
-        try:
-            yield
-        finally:
-            logger.info("MCP Server shutting down...")
+        async with sse_session_manager.run():
+            logger.info(
+                "MCP Server started with StreamableHTTP and SSE session managers!"
+            )
+            try:
+                yield
+            finally:
+                logger.info("MCP Server shutting down...")
 
 
-# Create session manager
+# Create session managers
 session_manager = StreamableHTTPSessionManager(
     app=mcp_server,
     event_store=None,
     json_response=True,  # Use JSON responses instead of SSE by default
+    stateless=True,
+)
+
+# Create SSE session manager
+sse_session_manager = StreamableHTTPSessionManager(
+    app=mcp_server,
+    event_store=None,
+    json_response=False,  # Use SSE responses for this endpoint
     stateless=True,
 )
 
@@ -210,7 +226,13 @@ app = Starlette(
     debug=True,
     routes=[
         Route("/health", health_check, methods=["GET"]),
+        # works in python's http transport and /mcp and /sse
+        # works in and go's sse transport for /mcp and /sse
         Mount("/mcp", app=handle_mcp),
+        Mount("/sse", app=handle_sse),
+        # works in go for both
+        # Route("/mcp", endpoint=handle_mcp, methods=["GET"]),
+        # Route("/sse", endpoint=handle_sse, methods=["GET"]),
     ],
     lifespan=lifespan,
 )
