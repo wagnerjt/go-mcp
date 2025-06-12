@@ -7,14 +7,23 @@ import (
 	"time"
 
 	"github.com/mark3labs/mcp-go/client"
+	"github.com/mark3labs/mcp-go/client/transport"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
+const mocked_key string = "sk-12345"
 const sse string = "sse"
 const http string = "http"
 
 var mcpUri string
 var mcpTransport string
+
+func genHeaders() map[string]string {
+	// Set the Authorization header with the mocked key
+	return map[string]string{
+		"Authorization": "Bearer " + mocked_key,
+	}
+}
 
 // pulled from https://github.com/mark3labs/mcp-go/blob/main/client/sse_test.go
 func main() {
@@ -28,24 +37,26 @@ func main() {
 	var c *client.Client
 	var err error
 
+	headers := genHeaders()
+
 	if mcpTransport == sse {
 		log.Printf("Using SSE transport")
-		// Create MCP client using SSE transport
-		c, err = client.NewSSEMCPClient(mcpUri)
+		// Create MCP client using SSE transport with headers
+		c, err = client.NewSSEMCPClient(mcpUri, transport.ClientOption(transport.WithHeaders(headers)))
 	} else if mcpTransport == http {
 		log.Printf("Using HTTP transport")
-		// Create MCP client using HTTP transport
-		c, err = client.NewStreamableHttpClient(mcpUri)
+		// Create MCP client using HTTP transport with headers
+		c, err = client.NewStreamableHttpClient(mcpUri, transport.StreamableHTTPCOption(transport.WithHTTPHeaders(headers)))
 	} else {
 		log.Fatalf("Unsupported transport type: %s", mcpTransport)
 		panic("Unsupported transport type")
 	}
 
+	// c, err := createClient(ctx, mcpUri, mcpTransport, true)
 	if err != nil {
 		log.Fatalf("Error creating client: %v\n", err)
 
 	}
-
 	// Start the client
 	if err := c.Start(ctx); err != nil {
 		log.Fatalf("Error starting client: %v", err)
@@ -98,6 +109,27 @@ func main() {
 
 	// callToolGoServer(ctx, c)
 	callToolLiteLLMServer(ctx, c)
+	callAuthTool(ctx, c)
+}
+
+func callAuthTool(ctx context.Context, c *client.Client) {
+	log.Printf("Calling add tool")
+
+	request := mcp.CallToolRequest{}
+	request.Params.Name = "check_auth"
+	request.Params.Arguments = map[string]interface{}{
+		"message": "Hello, this is a test message for authentication",
+	}
+
+	result, err := c.CallTool(ctx, request)
+	if err != nil || result.IsError {
+		log.Fatalf("CallTool failed: %v", err)
+	}
+
+	if len(result.Content) != 1 {
+		log.Fatalf("Expected 1 content item, got %d", len(result.Content))
+	}
+	log.Printf("Result: %s", result.Content[0].(mcp.TextContent).Text)
 }
 
 func callToolGoServer(ctx context.Context, c *client.Client) {
