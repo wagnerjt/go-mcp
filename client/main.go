@@ -10,27 +10,52 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
+const sse string = "sse"
+const http string = "http"
+
 var mcpUri string
+var mcpTransport string
 
 // pulled from https://github.com/mark3labs/mcp-go/blob/main/client/sse_test.go
 func main() {
+	flag.StringVar(&mcpTransport, "t", sse, "Transport to use for MCP client (sse, http)")
 	flag.StringVar(&mcpUri, "mcpUri", "http://localhost:8080/sse", "Fully qualified mcpUri to connect to including port i.e. http://localhost:8080/sse")
 	flag.Parse()
 
-	// Create MCP client
-	c, err := client.NewSSEMCPClient(mcpUri)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var c *client.Client
+	var err error
+
+	if mcpTransport == sse {
+		log.Printf("Using SSE transport")
+		// Create MCP client using SSE transport
+		c, err = client.NewSSEMCPClient(mcpUri)
+	} else if mcpTransport == http {
+		log.Printf("Using HTTP transport")
+		// Create MCP client using HTTP transport
+		c, err = client.NewStreamableHttpClient(mcpUri)
+	} else {
+		log.Fatalf("Unsupported transport type: %s", mcpTransport)
+		panic("Unsupported transport type")
+	}
+
 	if err != nil {
 		log.Fatalf("Error creating client: %v\n", err)
 
 	}
-	defer c.Close()
 
 	// Start the client
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
 	if err := c.Start(ctx); err != nil {
 		log.Fatalf("Error starting client: %v", err)
 	}
+	defer c.Close()
+
+	// Set up notification handler
+	c.OnNotification(func(notification mcp.JSONRPCNotification) {
+		log.Printf("Received notification: %s\n", notification.Method)
+	})
 
 	// init request
 	initRequest := mcp.InitializeRequest{}
@@ -39,7 +64,9 @@ func main() {
 		Name:    "go-client",
 		Version: "0.0.1",
 	}
+	initRequest.Params.Capabilities = mcp.ClientCapabilities{}
 
+	log.Println("Initializing client...")
 	result, err := c.Initialize(ctx, initRequest)
 	if err != nil {
 		log.Fatalf("Failed to initialize: %v", err)
@@ -73,7 +100,7 @@ func main() {
 	callToolLiteLLMServer(ctx, c)
 }
 
-func callToolGoServer(ctx context.Context, c *client.SSEMCPClient) {
+func callToolGoServer(ctx context.Context, c *client.Client) {
 	log.Printf("Calling add tool")
 
 	request := mcp.CallToolRequest{}
@@ -94,7 +121,7 @@ func callToolGoServer(ctx context.Context, c *client.SSEMCPClient) {
 	log.Printf("Result: %s", result.Content[0].(mcp.TextContent).Text)
 }
 
-func callToolLiteLLMServer(ctx context.Context, c *client.SSEMCPClient) {
+func callToolLiteLLMServer(ctx context.Context, c *client.Client) {
 	log.Printf("Calling get_current_time tool")
 
 	request := mcp.CallToolRequest{}

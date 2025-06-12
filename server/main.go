@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -38,6 +39,10 @@ func NewMCPServer() *server.MCPServer {
 		),
 	), handleEchoTool)
 
+	mcpServer.AddTool(mcp.NewTool("get_current_time",
+		mcp.WithDescription("Get the current time"),
+	), handleCurrentTime)
+
 	mcpServer.AddTool(
 		mcp.NewTool("notify"),
 		handleSendNotification,
@@ -64,7 +69,7 @@ func handleEchoTool(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
-	arguments := request.Params.Arguments
+	arguments := request.GetArguments()
 	message, ok := arguments["message"].(string)
 	if !ok {
 		return nil, fmt.Errorf("invalid message argument")
@@ -79,11 +84,25 @@ func handleEchoTool(
 	}, nil
 }
 
+func handleCurrentTime(
+	ctx context.Context,
+	request mcp.CallToolRequest,
+) (*mcp.CallToolResult, error) {
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{
+			mcp.TextContent{
+				Type: "text",
+				Text: fmt.Sprintf("Time: %s", time.Now().Format(time.RFC3339)),
+			},
+		},
+	}, nil
+}
+
 func handleAddTool(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
-	arguments := request.Params.Arguments
+	arguments := request.GetArguments()
 	a, ok1 := arguments["a"].(float64)
 	b, ok2 := arguments["b"].(float64)
 	if !ok1 || !ok2 {
@@ -138,7 +157,7 @@ func handleNotification(
 }
 
 func main() {
-	flag.StringVar(&transport, "t", "sse", "Transport type (stdio or sse)")
+	flag.StringVar(&transport, "t", "sse", "Transport type (stdio, sse, or http)")
 	flag.StringVar(&port, "p", "8080", "Port to listen on")
 	flag.Parse()
 
@@ -146,14 +165,23 @@ func main() {
 
 	// Only check for "sse" since stdio is the default
 	if transport == "sse" {
-		sseServer := server.NewSSEServer(mcpServer, server.WithBaseURL("http://localhost:"+port))
+		sseServer := server.NewSSEServer(mcpServer)
 		log.Printf("SSE server listening on port %s", port)
 		if err := sseServer.Start(":" + port); err != nil {
 			log.Fatalf("Server error: %v", err)
 		}
-	} else {
+	} else if transport == "http" {
+		httpServer := server.NewStreamableHTTPServer(mcpServer)
+		log.Printf("HTTP server listening on port %s", port)
+		if err := httpServer.Start(":" + port); err != nil {
+			log.Fatalf("Server error: %v", err)
+		}
+	} else if transport == "stdio" {
 		if err := server.ServeStdio(mcpServer); err != nil {
 			log.Fatalf("Server error: %v", err)
 		}
+	} else {
+		log.Fatalf("Unsupported transport type: %s", transport)
+		panic("Unsupported transport type")
 	}
 }

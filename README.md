@@ -42,7 +42,8 @@ go run main.go -t sse -p 8080 # transport over http network with port 8080
 ```sh
 # run go mcp server first on sse transport
 cd client
-go run main.go -mcpUri 'http://localhost:8080/sse' # connect to mcp server on uri
+go run main.go -t sse -mcpUri 'http://localhost:8080/sse' # connect to mcp server on uri
+go run main.go -t http -mcpUri 'http://localhost:3000/mcp' # connect to http mcp server on uri
 ```
 
 ### Testing Litellm sdk MCP client
@@ -83,6 +84,8 @@ go run main.go -mcpUri http://localhost:4000/mcp
 # 2025/03/29 06:02:11 Ping successful
 # 2025/03/29 06:02:11 Found 1 tools
 # 2025/03/29 06:02:11 Tool: get_current_time
+
 # 2025/03/29 06:02:11 Calling get_current_time tool
+
 # 2025/03/29 06:02:11 Result: 13:02
 ```
