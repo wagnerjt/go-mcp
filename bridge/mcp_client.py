@@ -1,51 +1,84 @@
 import asyncio
+from typing import Optional
 import click
 from datetime import timedelta
 from mcp import ClientSession
 from mcp.client.sse import sse_client
 from mcp.client.streamable_http import streamablehttp_client
 
+from mcp_types import MCPAuth, MCPTransport, MCPTransportType, MCPAuthType
+
+# default dummy token
+token = "sk-1234"
+
 
 class MCPClient:
     """MCP Client supporting both SSE and HTTP transports."""
 
-    def __init__(self, server_url: str, transport_type: str = "http"):
+    def __init__(
+        self,
+        server_url: str,
+        transport_type: MCPTransportType = MCPTransport.http,
+        auth_type: MCPAuthType = None,
+    ):
         self.server_url = server_url
         self.transport_type = transport_type
-        self.session = None
+        self.session: ClientSession | None = None
+        self.auth_type = auth_type
 
-    async def connect_and_test(self):
+    def _get_auth_headers(self, auth_passthrough: Optional[str] = None) -> dict:
+        """Generate authentication headers based on auth type."""
+        if not auth_passthrough:
+            return {}
+
+        if self.auth_type == MCPAuth.bearer_token:
+            return {"Authorization": f"Bearer {auth_passthrough}"}
+        elif self.auth_type == MCPAuth.basic_auth:
+            # Assuming auth_passthrough is in format "username:password"
+            import base64
+
+            auth_bytes = base64.b64encode(auth_passthrough.encode()).decode()
+            return {"Authorization": f"Basic {auth_bytes}"}
+        elif self.auth_type == MCPAuth.api_key:
+            return {"X-API-Key": auth_passthrough}
+        return {}
+
+    async def connect_and_test(self, auth_passthrough: Optional[str] = None):
         """Connect to the MCP server and test the get_current_time tool."""
         print(
             f"🔗 Connecting to {self.server_url} using {self.transport_type.upper()} transport..."
         )
 
         try:
-            if self.transport_type == "sse":
-                await self._connect_sse()
+            if self.transport_type == MCPTransport.sse:
+                await self._connect_sse(auth_passthrough)
             else:
-                await self._connect_http()
+                await self._connect_http(auth_passthrough)
         except Exception as e:
             print(f"❌ Failed to connect: {e}")
             import traceback
 
             traceback.print_exc()
 
-    async def _connect_sse(self):
+    async def _connect_sse(self, auth_passthrough: Optional[str] = None):
         """Connect using SSE transport."""
         print("📡 Opening SSE transport connection...")
+        headers = self._get_auth_headers(auth_passthrough)
         async with sse_client(
             url=self.server_url,
             timeout=60,
+            headers=headers,
         ) as (read_stream, write_stream):
             await self._run_session(read_stream, write_stream)
 
-    async def _connect_http(self):
+    async def _connect_http(self, auth_passthrough: Optional[str] = None):
         """Connect using HTTP transport."""
         print("📡 Opening StreamableHTTP transport connection...")
+        headers = self._get_auth_headers(auth_passthrough)
         async with streamablehttp_client(
             url=self.server_url,
             timeout=timedelta(seconds=60),
+            headers=headers,
         ) as (read_stream, write_stream, get_session_id):
             await self._run_session(read_stream, write_stream, get_session_id)
 
@@ -148,6 +181,22 @@ class MCPClient:
         except Exception as e:
             print(f"❌ Failed to call add_numbers tool: {e}")
 
+        # Test check_auth tool
+        try:
+            print(f"\n🔧 Testing check_auth tool")
+            result = await self.session.call_tool(
+                "check_auth", {"message": "Am I authenticated?"}
+            )
+
+            if hasattr(result, "content") and result.content:
+                for content in result.content:
+                    if hasattr(content, "text"):
+                        print(f"   Result: {content.text}")
+                    else:
+                        print(f"   Result: {content}")
+        except Exception as e:
+            print(f"❌ Failed to call add_numbers tool: {e}")
+
 
 @click.command()
 @click.option(
@@ -178,8 +227,8 @@ def main(transport: str, url: str, verbose: bool):
         print()
 
     # Create and run the client
-    client = MCPClient(url, transport.lower())
-    asyncio.run(client.connect_and_test())
+    client = MCPClient(url, transport.lower(), auth_type=MCPAuth.bearer_token)
+    asyncio.run(client.connect_and_test(token))
 
 
 if __name__ == "__main__":
