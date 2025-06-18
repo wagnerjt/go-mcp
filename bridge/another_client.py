@@ -42,23 +42,24 @@ class MCPClient:
         self.transport_type: MCPTransport = transport_type
         self.auth_type: MCPAuthType = auth_type
         self.timeout: float = timeout
-        self._mcp_auth_value: Optional[str] = auth_value
+        self._mcp_auth_value: Optional[str] = None
         self._session: Optional[ClientSession] = None
-        self._read_stream = None
-        self._write_stream = None
-        self._get_session_id = None
         self._context = None
         self._transport_ctx = None
         self._transport = None
         self._session_ctx = None
 
+        # handle the basic auth value if provided
+        if auth_value:
+            self.update_auth_value(auth_value)
+
     async def __aenter__(self):
-        """Enable async context manager support."""
-        headers = (
-            {"Authorization": f"Bearer {self._mcp_auth_value}"}
-            if self._mcp_auth_value
-            else {}
-        )
+        """
+        Enable async context manager support.
+          Initializes the transport and session.
+        """
+        headers = self._get_auth_headers()
+
         if self.transport_type == MCPTransport.sse:
             self._transport_ctx = sse_client(
                 url=self.server_url,
@@ -88,81 +89,6 @@ class MCPClient:
         if self._transport_ctx:
             await self._transport_ctx.__aexit__(exc_type, exc_val, exc_tb)
 
-    async def connect(self):
-        """Establish connection and initialize session."""
-        if self._session:
-            return
-
-        try:
-            if self.transport_type == MCPTransport.sse:
-                self._read_stream, self._write_stream = await asyncio.wait_for(
-                    self._connect_sse(), timeout=self.timeout
-                )
-            else:
-                print("[DEBUG] Using HTTP transport for connect")
-                result = await asyncio.wait_for(
-                    self._connect_http(), timeout=self.timeout
-                )
-                print(f"[DEBUG] Result from _connect_http: {result}")
-                self._read_stream, self._write_stream, self._get_session_id = result
-
-            if not self._read_stream or not self._write_stream:
-                raise ConnectionError("Failed to establish streams")
-
-            print("[DEBUG] Initializing ClientSession...")
-            self._session = ClientSession(self._read_stream, self._write_stream)
-            await asyncio.wait_for(self._session.initialize(), timeout=self.timeout)
-            print("✅ Session initialized successfully")
-        except asyncio.TimeoutError:
-            await self.disconnect()
-            raise ConnectionError(f"Connection timed out after {self.timeout} seconds")
-        except Exception as e:
-            await self.disconnect()
-            raise ConnectionError(f"Failed to connect: {str(e)}")
-
-    async def _connect_sse(self):
-        """Connect using SSE transport."""
-        print("📡 Opening SSE transport connection...")
-        headers = self._get_auth_headers()
-
-        ctx = sse_client(
-            url=self.server_url,
-            timeout=60,
-            headers=headers,
-        )
-
-        streams = await ctx.__aenter__()
-        self._context = ctx  # Store the context for cleanup
-        return streams
-
-    async def _connect_http(self):
-        """Connect using HTTP transport."""
-        print("📡 Opening StreamableHTTP transport connection...")
-        headers = self._get_auth_headers()
-        print(f"[DEBUG] HTTP URL: {self.server_url}")
-        print(f"[DEBUG] HTTP Headers: {headers}")
-        print(f"[DEBUG] HTTP Timeout: {self.timeout}")
-
-        ctx = streamablehttp_client(
-            url=self.server_url,
-            timeout=timedelta(seconds=self.timeout),
-            headers=headers,
-        )
-
-        streams = await ctx.__aenter__()
-        print(f"[DEBUG] Streams returned from streamablehttp_client: {streams}")
-        if isinstance(streams, tuple) and len(streams) == 3:
-            read_stream, write_stream, get_session_id = streams
-            print(f"[DEBUG] read_stream: {type(read_stream)}")
-            print(f"[DEBUG] write_stream: {type(write_stream)}")
-            print(f"[DEBUG] get_session_id: {type(get_session_id)}")
-            self._context = ctx
-            self._get_session_id = get_session_id
-            return read_stream, write_stream, get_session_id
-        else:
-            print("[ERROR] Unexpected streams returned from streamablehttp_client")
-            raise ConnectionError("Unexpected streamablehttp_client return value")
-
     async def disconnect(self):
         """Clean up session and connections."""
         if self._session:
@@ -178,10 +104,6 @@ class MCPClient:
             except Exception:
                 pass
             self._context = None
-
-        self._read_stream = None
-        self._write_stream = None
-        self._get_session_id = None
 
     def update_auth_value(self, mcp_auth_value: str):
         """
