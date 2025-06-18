@@ -54,15 +54,31 @@ class MCPClient:
 
     async def __aenter__(self):
         """Enable async context manager support."""
-        self._transport_ctx = streamablehttp_client(
-            url=self.server_url,
-            timeout=timedelta(seconds=self.timeout),
-            headers={"Authorization": f"Bearer {self._mcp_auth_value}"},
+        headers = (
+            {"Authorization": f"Bearer {self._mcp_auth_value}"}
+            if self._mcp_auth_value
+            else {}
         )
-        self._transport = await self._transport_ctx.__aenter__()
-        self._session_ctx = ClientSession(self._transport[0], self._transport[1])
-        self._session = await self._session_ctx.__aenter__()
-        await self._session.initialize()
+        if self.transport_type == MCPTransport.sse:
+            self._transport_ctx = sse_client(
+                url=self.server_url,
+                timeout=self.timeout,
+                headers=headers,
+            )
+            self._transport = await self._transport_ctx.__aenter__()
+            self._session_ctx = ClientSession(self._transport[0], self._transport[1])
+            self._session = await self._session_ctx.__aenter__()
+            await self._session.initialize()
+        else:
+            self._transport_ctx = streamablehttp_client(
+                url=self.server_url,
+                timeout=timedelta(seconds=self.timeout),
+                headers=headers,
+            )
+            self._transport = await self._transport_ctx.__aenter__()
+            self._session_ctx = ClientSession(self._transport[0], self._transport[1])
+            self._session = await self._session_ctx.__aenter__()
+            await self._session.initialize()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -222,7 +238,9 @@ async def test(
     auth_value: Optional[str] = None,
 ):
     """Test the MCP client connection and tool listing."""
-    async with MCPClient(url, auth_value=token, timeout=10) as client:
+    async with MCPClient(
+        url, transport_type=transport, auth_value=token, timeout=10
+    ) as client:
         tools = await client.list_tools()
         print("Available tools:")
         if hasattr(tools, "tools"):
