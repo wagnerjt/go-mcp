@@ -2,9 +2,12 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -21,7 +24,29 @@ type ToolName string
 const (
 	ECHO ToolName = "echo"
 	ADD  ToolName = "add"
+	AUTH ToolName = "check_auth"
 )
+
+type authKey struct{}
+
+func withAuthKey(ctx context.Context, auth string) context.Context {
+	return context.WithValue(ctx, authKey{}, auth)
+}
+
+func authFromRequest(ctx context.Context, r *http.Request) context.Context {
+	return withAuthKey(ctx, r.Header.Get("Authorization"))
+}
+
+// tokenFromContext extracts the auth token from the context.
+// This can be used by tools to extract the token regardless of the
+// transport being used by the server.
+func tokenFromContext(ctx context.Context) (string, error) {
+	auth, ok := ctx.Value(authKey{}).(string)
+	if !ok {
+		return "", fmt.Errorf("missing auth")
+	}
+	return auth, nil
+}
 
 func NewMCPServer() *server.MCPServer {
 	mcpServer := server.NewMCPServer(
@@ -59,6 +84,14 @@ func NewMCPServer() *server.MCPServer {
 			mcp.Required(),
 		),
 	), handleAddTool)
+
+	mcpServer.AddTool(mcp.NewTool(string(AUTH),
+		mcp.WithDescription("Checks for auth calls in the header"),
+		mcp.WithString("message",
+			mcp.Description("Message to echo"),
+			mcp.Required(),
+		),
+	), handleAuthTool)
 
 	mcpServer.AddNotificationHandler("notification", handleNotification)
 
@@ -119,6 +152,26 @@ func handleAddTool(
 	}, nil
 }
 
+func handleAuthTool(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	message, ok := request.GetArguments()["message"].(string)
+	if !ok {
+		return nil, fmt.Errorf("missing required message")
+	}
+
+	token, err := tokenFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if strings.HasPrefix(token, "Bearer ") && strings.Split(token, "Bearer ")[1] == "sk-1234" {
+
+	} else {
+		return nil, errors.New("token not correct")
+	}
+
+	return mcp.NewToolResultText(fmt.Sprintf("Echoing %s with auth successful", message)), nil
+}
+
 func handleSendNotification(
 	ctx context.Context,
 	request mcp.CallToolRequest,
@@ -165,13 +218,13 @@ func main() {
 
 	// Only check for "sse" since stdio is the default
 	if transport == "sse" {
-		sseServer := server.NewSSEServer(mcpServer)
+		sseServer := server.NewSSEServer(mcpServer, server.WithSSEContextFunc(authFromRequest))
 		log.Printf("SSE server listening on port %s", port)
 		if err := sseServer.Start(":" + port); err != nil {
 			log.Fatalf("Server error: %v", err)
 		}
 	} else if transport == "http" {
-		httpServer := server.NewStreamableHTTPServer(mcpServer)
+		httpServer := server.NewStreamableHTTPServer(mcpServer, server.WithHTTPContextFunc(authFromRequest))
 		log.Printf("HTTP server listening on port %s", port)
 		if err := httpServer.Start(":" + port); err != nil {
 			log.Fatalf("Server error: %v", err)
