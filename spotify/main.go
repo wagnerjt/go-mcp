@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -20,6 +21,19 @@ const (
 )
 
 type authKey struct{}
+
+type OAuthProtectedResource struct {
+	// Required: The uri that uniquely identifies the resource.
+	Resource string `json:"resource"`
+	// Lists the authorization servers that can be used to access the resource.
+	AuthorizationServers []string `json:"authorization_servers"`
+	// Optional: The OAuth 2.0 presentation methods supported by the resource.
+	BearerMethodsSupported []string `json:"bearer_methods_supported,omitempty"`
+	// Optional: Where the resource's public keys live
+	JwksURI string `json:"jwks_uri,omitempty"`
+	// Recommended
+	ScopesSupported []string `json:"scopes_supported,omitempty"`
+}
 
 func withAuthKey(ctx context.Context, auth string) context.Context {
 	return context.WithValue(ctx, authKey{}, auth)
@@ -98,6 +112,31 @@ func handleAuthSmokeTest(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`{"status":"AUTHENTICATED"}`))
 }
 
+func returnWellKnownAuthServer(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Returning well-known OAuth protected resource endpoint")
+
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	body := OAuthProtectedResource{
+		Resource:               "http://localhost:8080/",
+		AuthorizationServers:   []string{"http://localhost:8080/auth/smoke"},
+		BearerMethodsSupported: []string{"header"},
+		ScopesSupported:        []string{"openid", "profile", "email"},
+	}
+
+	// ignore error for simplicity
+	bodyJSON, _ := json.Marshal(body)
+	w.Write(bodyJSON)
+}
+
+func returnWellKnownProxy(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Returning well-known OAuth protected server metadata")
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	// TODO: Update this to return the actual OAuth server metadatas
+	w.Write([]byte(`{"test":"test"}`))
+}
+
 func main() {
 	flag.StringVar(&port, "port", "8080", "Port to run the MCP server on")
 	flag.Parse()
@@ -106,6 +145,10 @@ func main() {
 
 	// Simple health endpoint
 	mux.HandleFunc("/health", handleHealth)
+
+	// Adding MCP spec endpoints
+	mux.HandleFunc("/.well-known/oauth-protected-resource", returnWellKnownAuthServer)
+	mux.HandleFunc("/.well-known/oauth-authorizatioin-server", returnWellKnownProxy)
 
 	// Add the mcp server endpoint with the auth middleware
 	mcpServer := NewMCPServer()
