@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
 
@@ -32,6 +33,19 @@ func ValidateJWT(r *http.Request) bool {
 	return true
 }
 
+func handleEchoTool(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	arguments := request.GetArguments()
+	message, ok := arguments["message"].(string)
+	if !ok {
+		return nil, fmt.Errorf("invalid arguments: message is required")
+	}
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{
+			mcp.NewTextContent(fmt.Sprintf("Echo: %s", message)),
+		},
+	}, nil
+}
+
 func NewMCPServer() *server.MCPServer {
 	hooks := &server.Hooks{}
 
@@ -40,6 +54,15 @@ func NewMCPServer() *server.MCPServer {
 		server.WithLogging(),
 		server.WithHooks(hooks),
 	)
+
+	// Add a simple echo tool
+	mcpServer.AddTool(mcp.NewTool("echo",
+		mcp.WithDescription("Echoes back the input"),
+		mcp.WithString("message",
+			mcp.Description("Message to echo"),
+			mcp.Required(),
+		),
+	), handleEchoTool)
 
 	return mcpServer
 }

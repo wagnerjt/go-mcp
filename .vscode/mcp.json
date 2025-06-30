@@ -1,0 +1,18 @@
+{
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "mcp-token",
+      "description": "Enter your MCP token",
+      "password": true
+    }
+  ],
+  "servers": {
+    "local-spotify-server": {
+      "url": "http://localhost:8080/mcp",
+      "headers": {
+        "Authorization": "Bearer ${input:mcp-token}"
+      }
+    }
+  }
+}
