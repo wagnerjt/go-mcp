@@ -81,9 +81,26 @@ func NewMCPServer() *server.MCPServer {
 	return mcpServer
 }
 
+func rejectWithOAuthResponseCodes(rw http.ResponseWriter) {
+	resource_metadata := "http://localhost:8080/.well-known/oauth-protected-resource"
+	authorization_uri := "http://localhost:8080/auth/smoke"
+	header_response := fmt.Sprintf(`Bearer realm="spotify-go-server",resource_metadata="%s",authorization_uri="%s",error="unauthorized"`, resource_metadata, authorization_uri)
+	rw.Header().Set("WWW-Authenticate", header_response)
+	rw.WriteHeader(http.StatusUnauthorized)
+	body := `{"error":"unauthorized","error_description":"You must authenticate to access this resource"}`
+	bodyJson, _ := json.Marshal(body)
+	rw.Write(bodyJson)
+}
+
 func authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !ValidateJWT(r) {
+		auth := r.Header.Get(AuthorizationHeader)
+		if auth == "" {
+			// TODO: make better instead of just missing auth header
+			log.Printf("Missing Authorization header, redirecting to the oauth endpoints")
+			rejectWithOAuthResponseCodes(w)
+			return
+		} else if !ValidateJWT(r) {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
