@@ -175,7 +175,7 @@ func textResponse(rw http.ResponseWriter, status int, body string) {
 
 func rejectWithOAuthResponseCodes(rw http.ResponseWriter) {
 	resource_metadata := "http://127.0.0.1:8080/.well-known/oauth-protected-resource"
-	authorization_uri := "http://127.0.0.1:8080/auth/smoke"
+	authorization_uri := SpotifyAuthEndpoint
 	header_response := fmt.Sprintf(`Bearer realm="spotify-go-server",resource_metadata="%s",authorization_uri="%s",error="unauthorized"`, resource_metadata, authorization_uri)
 	rw.Header().Set("WWW-Authenticate", header_response)
 	rw.WriteHeader(http.StatusUnauthorized)
@@ -227,10 +227,10 @@ func returnWellKnownAuthServer(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	body := OAuthProtectedResource{
-		Resource:               "http://127.0.0.1:8080/",
-		AuthorizationServers:   []string{"http://127.0.0.1:8080/auth/smoke"},
+		Resource:               "https://accounts.spotify.com",
+		AuthorizationServers:   []string{SpotifyAuthEndpoint},
 		BearerMethodsSupported: []string{"header"},
-		ScopesSupported:        []string{"openid", "profile", "email"},
+		ScopesSupported:        []string{"user-read-private", "user-read-email"},
 	}
 
 	// ignore error for simplicity
@@ -274,7 +274,7 @@ func main() {
 
 	// Adding MCP spec endpoints
 	mux.HandleFunc("/.well-known/oauth-protected-resource", returnWellKnownAuthServer)
-	mux.HandleFunc("/.well-known/oauth-authorizatioin-server", returnWellKnownProxy)
+	mux.HandleFunc("/.well-known/oauth-authorization-server", returnWellKnownProxy)
 	// Provide a valid OAuthConfig to the callback handler
 	mux.Handle("/auth/callback", &OAuthRedirectHandler{
 		OAuthConfig: &oauth2.Config{
