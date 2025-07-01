@@ -9,10 +9,7 @@
   ],
   "servers": {
     "local-spotify-server": {
-      "url": "http://localhost:8080/mcp",
-      "headers": {
-        "Authorization": "Bearer ${input:mcp-token}"
-      }
+      "url": "http://localhost:8080/mcp"
     }
   }
 }

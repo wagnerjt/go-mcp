@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -16,7 +17,8 @@ import (
 )
 
 var (
-	port string
+	port              string
+	well_known_config []byte
 	// In-memory store for PKCE state and code_verifier
 	pkceStore            = make(map[string]string) // state -> code_verifier
 	Client_Id     string = getEnv("SPOTIFY_CLIENT_ID")
@@ -202,6 +204,25 @@ func authMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+func GetResponseBodyBytes(url string) []byte {
+	resp, err := http.Get(url)
+	if err != nil {
+		log.Fatalf("Failed to fetch %s: %v", url, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Fatalf("Failed to fetch %s: status code %d", url, resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatalf("Failed to read response body from %s: %v", url, err)
+	}
+
+	return body
+}
+
 // HTTP endpoints
 func handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
@@ -226,24 +247,31 @@ func returnWellKnownAuthServer(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	body := OAuthProtectedResource{
-		Resource:               "https://accounts.spotify.com",
+	// body := OAuthProtectedResource{
+	// 	Resource:               "https://accounts.spotify.com",
+	// 	AuthorizationServers:   []string{SpotifyAuthEndpoint},
+	// 	BearerMethodsSupported: []string{"header"},
+	// 	ScopesSupported:        []string{"user-read-private", "user-read-email"},
+	// }
+
+	proxy_body := OAuthProtectedResource{
+		Resource:               "http://127.0.0.1:8080/",
 		AuthorizationServers:   []string{SpotifyAuthEndpoint},
 		BearerMethodsSupported: []string{"header"},
 		ScopesSupported:        []string{"user-read-private", "user-read-email"},
 	}
 
 	// ignore error for simplicity
-	bodyJSON, _ := json.Marshal(body)
+	bodyJSON, _ := json.Marshal(proxy_body)
 	w.Write(bodyJSON)
 }
 
 func returnWellKnownProxy(w http.ResponseWriter, r *http.Request) {
+	// Spotify does not have a well-known endpoint for OAuth authorization resources, proxy it for now
 	fmt.Println("Returning well-known OAuth protected server metadata")
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	// TODO: Update this to return the actual OAuth server metadatas
-	w.Write([]byte(`{"test":"test"}`))
+	w.Write([]byte(well_known_config))
 }
 
 // Handler to start the PKCE OAuth flow
@@ -266,6 +294,9 @@ func handleSpotifyLogin(w http.ResponseWriter, r *http.Request) {
 func main() {
 	flag.StringVar(&port, "port", "8080", "Port to run the MCP server on")
 	flag.Parse()
+
+	// Get spotify's well-known configuration initially for proxying
+	well_known_config = GetResponseBodyBytes("https://accounts.spotify.com/.well-known/openid-configuration")
 
 	mux := http.NewServeMux()
 
