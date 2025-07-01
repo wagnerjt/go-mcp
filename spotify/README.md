@@ -71,6 +71,6 @@ Mcp server only returns an echo with any Authorization header set.
 
 ### Notes
 
-- Set your Spotify app's redirect URI to `http://localhost:8080/auth/callback` in the Spotify Developer Dashboard.
+- Set your Spotify app's redirect URI to `http://127.0.0.1:8080/auth/callback` in the Spotify Developer Dashboard (due to their restrictions with localhost).
 - The PKCE code_verifier is stored in-memory for demo purposes..do not deploy this in production
 - Replace client ID/secret in the code or use environment variables as shown above.
