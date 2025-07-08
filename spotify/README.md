@@ -8,6 +8,7 @@ This is a Go server implementing the MCP protocol with Spotify OAuth2 PKCE authe
 
 - Go 1.20+
 - Spotify Developer Account ([Create an app](https://developer.spotify.com/dashboard/applications))
+- Set your Spotify app's redirect URI to `http://127.0.0.1:8080/auth/callback` in the Spotify Developer Dashboard (due to their restrictions with localhost).
 
 ### Environment Variables
 
@@ -20,8 +21,8 @@ Set the following environment variables (or edit the code directly):
 
 ```sh
 # Set environment variables (PowerShell example)
-export SPOTIFY_CLIENT_ID = "your_spotify_client_id"
-export SPOTIFY_CLIENT_SECRET = "your_spotify_client_secret"
+export SPOTIFY_CLIENT_ID="your_spotify_client_id"
+export SPOTIFY_CLIENT_SECRET="your_spotify_client_secret"
 
 # Run the server
 cd spotify
@@ -71,6 +72,5 @@ Mcp server only returns an echo with any Authorization header set.
 
 ### Notes
 
-- Set your Spotify app's redirect URI to `http://127.0.0.1:8080/auth/callback` in the Spotify Developer Dashboard (due to their restrictions with localhost).
 - The PKCE code_verifier is stored in-memory for demo purposes..do not deploy this in production
 - Replace client ID/secret in the code or use environment variables as shown above.
