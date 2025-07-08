@@ -68,10 +68,10 @@ func NewMCPServer() *server.MCPServer {
 		mcp.WithDescription("Get the current time"),
 	), handleCurrentTime)
 
-	mcpServer.AddTool(
-		mcp.NewTool("notify"),
-		handleSendNotification,
-	)
+	// mcpServer.AddTool(
+	// 	mcp.NewTool("notify"),
+	// 	handleSendNotification,
+	// )
 
 	mcpServer.AddTool(mcp.NewTool(string(ADD),
 		mcp.WithDescription("Adds two numbers"),
@@ -217,23 +217,24 @@ func main() {
 	mcpServer := NewMCPServer()
 
 	// Only check for "sse" since stdio is the default
-	if transport == "sse" {
+	switch transport {
+	case "sse":
 		sseServer := server.NewSSEServer(mcpServer, server.WithSSEContextFunc(authFromRequest))
 		log.Printf("SSE server listening on port %s", port)
 		if err := sseServer.Start(":" + port); err != nil {
 			log.Fatalf("Server error: %v", err)
 		}
-	} else if transport == "http" {
-		httpServer := server.NewStreamableHTTPServer(mcpServer, server.WithHTTPContextFunc(authFromRequest))
+	case "http":
+		httpServer := server.NewStreamableHTTPServer(mcpServer)
 		log.Printf("HTTP server listening on port %s", port)
 		if err := httpServer.Start(":" + port); err != nil {
 			log.Fatalf("Server error: %v", err)
 		}
-	} else if transport == "stdio" {
+	case "stdio":
 		if err := server.ServeStdio(mcpServer); err != nil {
 			log.Fatalf("Server error: %v", err)
 		}
-	} else {
+	default:
 		log.Fatalf("Unsupported transport type: %s", transport)
 		panic("Unsupported transport type")
 	}

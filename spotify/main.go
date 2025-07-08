@@ -13,6 +13,7 @@ import (
 	"github.com/grokify/go-pkce"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	"github.com/rs/cors"
 	"golang.org/x/oauth2"
 )
 
@@ -255,8 +256,9 @@ func returnWellKnownAuthServer(w http.ResponseWriter, r *http.Request) {
 	// }
 
 	proxy_body := OAuthProtectedResource{
-		Resource:               "http://127.0.0.1:8080/",
-		AuthorizationServers:   []string{SpotifyAuthEndpoint},
+		Resource:             "http://127.0.0.1:8080/",
+		AuthorizationServers: []string{"http://127.0.0.1:8080/"},
+		// AuthorizationServers:   []string{SpotifyAuthEndpoint},
 		BearerMethodsSupported: []string{"header"},
 		ScopesSupported:        []string{"user-read-private", "user-read-email"},
 	}
@@ -327,10 +329,11 @@ func main() {
 	httpServer := server.NewStreamableHTTPServer(mcpServer, server.WithHTTPContextFunc(authFromRequest))
 	mux.Handle("/mcp", authMiddleware(http.HandlerFunc(httpServer.ServeHTTP)))
 	mux.Handle("/auth/smoke", authMiddleware(http.HandlerFunc(handleAuthSmokeTest)))
+	handler := cors.Default().Handler(mux)
 
 	// Start the server
 	log.Printf("HTTP server listening on port %s", port)
-	if err := http.ListenAndServe(":"+port, mux); err != nil {
+	if err := http.ListenAndServe(":"+port, handler); err != nil {
 		log.Fatalf("Server error: %v", err)
 	}
 }
